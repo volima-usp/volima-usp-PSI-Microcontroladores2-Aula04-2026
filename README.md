@@ -149,3 +149,70 @@ Abaixo estão especificados os três casos de teste implementados no firmware, c
   2. Durante esses $80\ \mu\text{s}$, a **Thread B** executa `set_red(0)` (garante que o Vermelho está desligado) e também entra em atraso.
   3. Ambas as threads já forçaram a condição de segurança, mas ainda não acionaram seus próprios pinos.
   4. Na sequência imediata, **Thread A** liga o Vermelho (`set_red(1)`) e **Thread B** liga o Azul (`set_blue(1)`). Sem proteção atômica (`k_mutex`), ambas entram na região crítica simultaneamente, gerando o estado proibido **Magenta**.
+
+  # Análise Comparativa: Impacto da Implementação de `k_mutex` no Zephyr RTOS (FRDM-KL25Z)
+
+## 1. Resumo Executivo
+
+A introdução de mutexes dedicados (`counter_mutex`, `mask_mutex` e `rgb_excl_mutex`) eliminou completamente as **condições de corrida (*race conditions*)** observadas nos três cenários de teste, mantendo intactas as janelas críticas artificiais (`k_busy_wait`) e a concorrência entre **Thread A** e **Thread B**. A mudança transformou um sistema não determinístico — sujeito a perda de dados, corrupção de máscara e violação de invariantes de hardware — em um sistema previsível e auditável via log (`status=OK` em todos os ciclos).
+
+---
+
+## 2. Comparativo por Caso de Teste: Antes vs. Depois
+
+### 2.1. Caso de Teste 01 (CT-01): Contador Compartilhado (`shared_toggle_counter`)
+
+| Aspecto | Antes (Sem Proteção) | Depois (Com `counter_mutex`) |
+| :--- | :--- | :--- |
+| **Integridade dos Dados** | Perda de 30% a 50% dos incrementos (*Lost Update*). `observado` ficava muito abaixo de `esperado`. | **100% de integridade.** `esperado == observado` e `perdidos=0` em todos os ciclos. |
+| **Comportamento na Janela Crítica** | A preempção durante o `k_busy_wait(50)` permitia que ambas as threads lessem o mesmo valor e sobrescrevessem o incremento uma da outra. | Se uma thread tenta acessar o contador durante o `k_busy_wait(50)` da outra, ela fica bloqueada no `k_mutex_lock` até a conclusão da escrita. |
+| **Comportamento Visual (LED Verde - `led0`)** | Piscadas irregulares e travamentos aleatórios causados pela perda de paridade do contador. | **Efeito colateral de sincronismo (*lockstep*):** com o `k_msleep(10)` idêntico, as threads passaram a alternar em passos de 2, mantendo a paridade fixa na Thread A (LED apagado num ciclo e aceso contínuo no outro). Corrigido ao usar `(shared_toggle_counter / 20) % 2`. |
+| **Status no Log** | `FALHA_DETECTADA` (`perdidos > 0`). | `OK` (`perdidos=0`, `anomalias_led=0`). |
+
+* **Problemas que existiam:** *Lost update* em operação *Read-Modify-Write* e instabilidade na cadência de acionamento do LED Verde.
+* **Problemas que deixaram de existir:** Perda de incrementos e dessincronização entre o contador lógico e as execuções reais das threads.
+
+---
+
+### 2.2. Caso de Teste 02 (CT-02): Máscara de Bits RGB (`shared_rgb_mask`)
+
+| Aspecto | Antes (Sem Proteção) | Depois (Com `mask_mutex`) |
+| :--- | :--- | :--- |
+| **Integridade da Máscara** | Ocorrência frequente de *Dirty Overwrite* nos cruzamentos entre os ciclos de $200\text{ ms}$ (Vermelho) e $150\text{ ms}$ (Azul). | **Zero sobrescritas.** A leitura, modificação de bits, `k_busy_wait(100)` e escrita nos pinos ocorrem de forma atômica. |
+| **Comportamento Visual (LEDs `led2` e `led1`)** | Extinção prematura de cores (*glitches*) ou religamento indevido de um canal recém-apagado pela outra thread. | Transições limpas entre **Vermelho**, **Azul** e **Magenta**. A presença da luz Magenta continua ocorrendo e é **esperada**, pois representa a sobreposição legítima dos ciclos independentes ($200\text{ ms}$ e $150\text{ ms}$). |
+| **Concorrência Preservada** | As threads competiam livremente, corrompendo a máscara. | Como os `k_msleep(200)` e `k_msleep(150)` permanecem **fora** do mutex, as threads continuam operando em paralelo sem bloquear o ciclo uma da outra. |
+| **Status no Log** | `FALHA_DETECTADA` com múltiplos eventos `CT-02,OVERWRITE`. | `OK` com `sobrescritas=0` e `sobreposicoes_magenta > 0` (comportamento nominal). |
+
+* **Problemas que existiam:** Corrupção de bits na máscara compartilhada e *glitches* visuais nos LEDs Vermelho e Azul.
+* **Problemas que deixaram de existir:** Sobrescrita de estado (*Dirty Overwrite*) durante a janela crítica de $100\ \mu\text{s}$.
+
+---
+
+### 2.3. Caso de Teste 03 (CT-03): Exclusão Mútua de Hardware (Vermelho vs. Azul)
+
+| Aspecto | Antes (Sem Proteção) | Depois (Com `rgb_excl_mutex`) |
+| :--- | :--- | :--- |
+| **Invariante de Segurança** | Violada periodicamente (a cada $\approx 200\text{ ms}$). A sequência *Check-Then-Act* era interrompida no `k_busy_wait(80)`. | **Respeitada integralmente.** O mutex engloba desde o desligamento do canal oposto até o fim do pulso aceso (`k_msleep(50)` ou `40 ms`). |
+| **Comportamento Visual (LEDs `led2` e `led1`)** | Flashes visíveis na cor **Magenta** (estado proibido), comprovando energização simultânea de `PTB18` e `PTD1`. | Apenas flashes alternados de **Vermelho puro** ou **Azul puro**. Nenhum flash Magenta ocorre na placa. |
+| **Status no Log** | `FALHA_DETECTADA` com eventos `CT-03,COLISAO_RB` (`estado=MAGENTA_PROIBIDO`). | `OK` com `colisoes_magenta=0`. |
+
+* **Problemas que existiam:** Violação de exclusão mútua (*Check-Then-Act race*) e acionamento simultâneo proibido de dois canais de hardware.
+* **Problemas que deixaram de existir:** Colisões físicas de GPIO e geração do estado proibido Magenta.
+
+---
+
+## 3. Podemos Considerar o Comportamento Estável Agora?
+
+**Sim, do ponto de vista de concorrência e integridade de estado, o sistema pode ser considerado estável.**
+
+### 3.1. Evidências de Estabilidade
+1. **Determinismo de Dados:** Todos os contadores e máscaras compartilhadas mantêm consistência absoluta entre o valor esperado e o observado (`perdidos=0`, `sobrescritas=0`, `colisoes_magenta=0`).
+2. **Isolamento de Transições:** A barreira de pausa (`active_test_case = 0`) de $300\text{ ms}$ entre os testes eliminou o vazamento de estados residuais entre o CT-03 e o CT-01 (que anteriormente causava acionamentos indevidos de LEDs fora do teste ativo).
+3. **Ausência de Deadlock:** Cada teste utiliza um mutex dedicado e nenhuma thread adquire mais de um mutex simultaneamente, eliminando matematicamente a possibilidade de *deadlock* por espera circular.
+4. **Proteção contra Inversão de Prioridade:** O `k_mutex` do Zephyr implementa herança de prioridade nativa, garantindo estabilidade mesmo que as prioridades das threads sejam alteradas futuramente.
+
+### 3.2. Ressalvas de Projeto (Pontos de Atenção)
+Embora o sistema esteja estável para o propósito experimental, duas características do código atual devem ser consideradas antes de levá-lo a um ambiente de produção:
+
+* **Ajuste de Visualização no CT-01:** Sem o divisor de frequência (`(shared_toggle_counter / 20) % 2`), o sincronismo perfeito (*lockstep*) introduzido pelo mutex faz o LED Verde parecer travado (sempre aceso ou sempre apagado durante o ciclo), embora o contador interno esteja funcionando corretamente.
+* **Bloqueio Longo no CT-03:** Manter o `rgb_excl_mutex` travado durante todo o `k_msleep(50)` / `k_msleep(40)` é necessário para garantir exclusão mútua do LED físico, mas aumenta a latência de espera da outra thread. Em sistemas de tempo real estrito, costuma-se substituir esse padrão por uma máquina de estados orientada a temporizadores (`k_timer`) ou fila de mensagens (`k_msgq`) para evitar que threads fiquem bloqueadas aguardando períodos longos de I/O.
