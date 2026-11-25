@@ -1,0 +1,30 @@
+[00:00:10.550,000] [0m<inf> race_report: RESUMO,CT-01,esperado=1962,observado=1962,perdidos=0,anomalias_led=0,status=OK[0m
+[00:00:10.850,000] [0m<inf> race_report: --- [CICLO 1] INICIO CT-02 (t=10850ms) ---[0m
+[00:00:21.101,000] [0m<inf> race_report: RESUMO,CT-02,sobrescritas=0,sobreposicoes_magenta=25,mascara_final=0x04,status=OK[0m
+[00:00:21.401,000] [0m<inf> race_report: --- [CICLO 1] INICIO CT-03 (t=21401ms) ---[0m
+[00:00:31.651,000] [0m<inf> race_report: RESUMO,CT-03,colisoes_magenta=0,status=OK[0m
+[00:00:31.951,000] [0m<inf> race_report: --- [CICLO 2] INICIO CT-01 (t=31951ms) ---[0m
+[00:00:42.202,000] [0m<inf> race_report: RESUMO,CT-01,esperado=1961,observado=1961,perdidos=0,anomalias_led=0,status=OK[0m
+[00:00:42.502,000] [0m<inf> race_report: --- [CICLO 2] INICIO CT-02 (t=42502ms) ---[0m
+[00:00:52.752,000] [0m<inf> race_report: RESUMO,CT-02,sobrescritas=0,sobreposicoes_magenta=25,mascara_final=0x04,status=OK[0m
+[00:00:53.052,000] [0m<inf> race_report: --- [CICLO 2] INICIO CT-03 (t=53052ms) ---[0m
+[00:01:03.303,000] [0m<inf> race_report: RESUMO,CT-03,colisoes_magenta=0,status=OK[0m
+[00:01:03.603,000] [0m<inf> race_report: --- [CICLO 3] INICIO CT-01 (t=63603ms) ---[0m
+[00:01:13.853,000] [0m<inf> race_report: RESUMO,CT-01,esperado=1960,observado=1960,perdidos=0,anomalias_led=0,status=OK[0m
+[00:01:14.154,000] [0m<inf> race_report: --- [CICLO 3] INICIO CT-02 (t=74154ms) ---[0m
+[00:01:24.404,000] [0m<inf> race_report: RESUMO,CT-02,sobrescritas=0,sobreposicoes_magenta=33,mascara_final=0x04,status=OK[0m
+[00:01:24.704,000] [0m<inf> race_report: --- [CICLO 3] INICIO CT-03 (t=84704ms) ---[0m
+[00:01:34.954,000] [0m<inf> race_report: RESUMO,CT-03,colisoes_magenta=0,status=OK[0m
+[00:01:35.255,000] [0m<inf> race_report: --- [CICLO 4] INICIO CT-01 (t=95255ms) ---[0m
+[00:01:45.505,000] [0m<inf> race_report: RESUMO,CT-01,esperado=1961,observado=1961,perdidos=0,anomalias_led=0,status=OK[0m
+[00:01:45.805,000] [0m<inf> race_report: --- [CICLO 4] INICIO CT-02 (t=105805ms) ---[0m
+[00:01:56.055,000] [0m<inf> race_report: RESUMO,CT-02,sobrescritas=0,sobreposicoes_magenta=26,mascara_final=0x04,status=OK[0m
+[00:01:56.356,000] [0m<inf> race_report: --- [CICLO 4] INICIO CT-03 (t=116356ms) ---[0m
+[00:02:06.606,000] [0m<inf> race_report: RESUMO,CT-03,colisoes_magenta=0,status=OK[0m
+[00:02:06.906,000] [0m<inf> race_report: --- [CICLO 5] INICIO CT-01 (t=126906ms) ---[0m
+[00:02:17.156,000] [0m<inf> race_report: RESUMO,CT-01,esperado=1961,observado=1961,perdidos=0,anomalias_led=0,status=OK[0m
+[00:02:17.457,000] [0m<inf> race_report: --- [CICLO 5] INICIO CT-02 (t=137457ms) ---[0m
+[00:02:27.707,000] [0m<inf> race_report: RESUMO,CT-02,sobrescritas=0,sobreposicoes_magenta=33,mascara_final=0x04,status=OK[0m
+[00:02:28.007,000] [0m<inf> race_report: --- [CICLO 5] INICIO CT-03 (t=148007ms) ---[0m
+[00:02:38.257,000] [0m<inf> race_report: RESUMO,CT-03,colisoes_magenta=0,status=OK[0m
+[00:02:38.558,000] [0m<inf> race_report: --- [CICLO 6] INICIO CT-01 (t=158558ms) ---[0m
